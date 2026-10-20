@@ -1,0 +1,78 @@
+-- Сервистер
+local Players = game:GetService("Players")
+local RunService = game:GetService("RunService")
+local HttpService = game:GetService("HttpService")
+
+local player = Players.LocalPlayer
+local fileName = "ParkourRecording.json"
+
+-- GUI (Бастау батырмасы үшін экрандағы панель)
+local ScreenGui = Instance.new("ScreenGui")
+ScreenGui.Name = "ParkourPlayGUI"
+ScreenGui.Parent = game.CoreGui
+
+local Frame = Instance.new("Frame")
+Frame.Size = UDim2.new(0, 180, 0, 100)
+Frame.Position = UDim2.new(0, 20, 0, 200)
+Frame.BackgroundColor3 = Color3.fromRGB(25, 25, 25)
+Frame.BorderSizePixel = 0
+Frame.Parent = ScreenGui
+
+local UICorner = Instance.new("UICorner")
+UICorner.CornerRadius = UDim.new(0, 8)
+UICorner.Parent = Frame
+
+-- Батырма жасау
+local PlayBtn = Instance.new("TextButton")
+PlayBtn.Size = UDim2.new(0, 140, 0, 40)
+PlayBtn.Position = UDim2.new(0, 20, 0, 30)
+PlayBtn.BackgroundColor3 = Color3.fromRGB(50, 200, 50)
+PlayBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+PlayBtn.TextSize = 15
+PlayBtn.Font = Enum.Font.SourceSansBold
+PlayBtn.Text = "▶ Паркурды бастау"
+PlayBtn.Parent = Frame
+
+local btnCorner = Instance.new("UICorner")
+btnCorner.CornerRadius = UDim.new(0, 6)
+btnCorner.Parent = PlayBtn
+
+-- ҚАЙТАЛАУ (REPLAY) ЛОГИКАСЫ
+PlayBtn.MouseButton1Click:Connect(function()
+    -- 1. Телефон жадынан файлдың бар-жоғын тексеру және оқу
+    if not pcall(function() readfile(fileName) end) then
+        warn("Қате: " .. fileName5 .. " файлы Delta/workspace папкасынан табылмады!")
+        return
+    end
+
+    local fileContent = readfile(fileName)
+    local success, recordedFrames = pcall(function()
+        return HttpService:JSONDecode(fileContent)
+    end)
+
+    if not success or not recordedFrames or #recordedFrames == 0 then
+        warn("Қате: Файлдағы координаттарды оқу мүмкін болмады!")
+        return
+    end
+
+    PlayBtn.Text = "Өтіп жатыр..."
+    print("Паркур басталды! Кадрлар саны: " .. #recordedFrames)
+
+    -- 2. Кейіпкерді координаттар бойынша жүргізу
+    task.spawn(function()
+        local character = player.Character or player.CharacterAdded:Wait()
+        local rootPart = character:WaitForChild("HumanoidRootPart")
+
+        for _, frame in ipairs(recordedFrames) do
+            if rootPart and frame.CFrame then
+                -- Сандар массивінен CFrame-ді қайта құру
+                rootPart.CFrame = CFrame.new(unpack(frame.CFrame))
+            end
+            -- Келесі кадрға дейін бір кадар күту
+            RunService.RenderStepped:Wait()
+        end
+
+        PlayBtn.Text = "▶ Паркурды бастау"
+        print("Паркур сәтті аяқталды!")
+    end)
+end)
